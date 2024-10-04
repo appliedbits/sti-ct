@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/appliedbits/sti-ct/internal/models"
 	tr "github.com/appliedbits/sti-ct/internal/trillian"
 	"github.com/appliedbits/sti-ct/internal/types"
 
@@ -24,14 +25,22 @@ import (
 // AddPreCertificateChain handles the "add-pre-chain" requests.
 func AddPreCertificateChain(logInfo *types.LogInfo) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var addChainReq types.AddChainRequest
+		var addChainReq models.AddPreCertificateChain
 		if err := c.BindJSON(&addChainReq); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request format"})
 			return
 		}
 
-		// Parse and verify the certificate chain.
-		chain, err := parseCertificateChain(addChainReq.Chain)
+		var rawChain [][]byte
+		for _, cert := range addChainReq.Chain {
+			rawCert, err := base64.StdEncoding.DecodeString(cert)
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to decode certificate: %s", err)})
+				return
+			}
+			rawChain = append(rawChain, rawCert)
+		}
+		chain, err := parseCertificateChain(rawChain)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to parse certificate chain: %s", err)})
 			return

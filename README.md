@@ -79,6 +79,12 @@ kubectl create secret generic trusted-roots \
   -n stict
 ```
 
+If you need to replace the existing secret, you can first delete existing ones and then create new ones.
+
+```sh
+kubectl delete secret trusted-roots -n stict
+```
+
 Apply the deployment:
 
 ```sh
@@ -115,30 +121,47 @@ kubectl port-forward svc/mysql 3306:3306
 MYSQL_ROOT_PASSWORD=password MYSQL_DATABASE=trillian MYSQL_USER=trillian MYSQL_PASSWORD=trillian MYSQL_HOST=127.0.0.1 MYSQL_USER_HOST=127.0.0.1  ./scripts/resetdb.sh
 ```
 
-### Step 10: Submit STI Certificate
+### Step 10: Create Certificates
 
-If you have a certificate in PEM format, you can convert it to DER formatand then base64 using the following command:
+Build the `cert_tool` binary:
 
-```bash
-openssl x509 -outform der -in leaf_chain.crt -out my_leaf_chain.der
-
-base64 -b 0 -i my_leaf_chain.der -o my_leaf_chain_base64.txt
+```sh
+cd cmd/cert_tool
+go build -o cert_tool main.go
 ```
 
-Once you have the DER format, create a JSON file `payload.json` with the following format:
+Create sample certificate chain using cert_tool:
+
+```sh
+./cert_tool -type=root -cn="Root CA" -prefix=root -b64=yes
+```
+
+Notice, -b64=yes flag will output the certificate in base64 format.  This will be used to submit the pre certificate to the CT log.
+
+Create an intermediate certificate:
+
+```sh
+./cert_tool -type=intermediate -cn="SCA" -prefix=intermediate -b64=yes
+```
+
+Create a delegate pre-certificate:
+
+```sh
+./cert_tool -type=delegate -cn="ACME Inc" -prefix=delegate -b64=yes
+```
+
+### Step 11: Submit Delegate Pre-Certificate to CT Log
+
 
 ```json
-{
-  "type": 1,
-  "submission: "DER_BASE64_ENCODED_LEAF_CERT",
+curl  -X POST \
+  'http://localhost:9009/ct/v1/add-pre-chain' \
+  --header 'Accept: */*' \
+  --header 'Content-Type: application/json' \
+  --data-raw '{
   "chain": [
-    "DER_BASE64_ENCODED_INTERMEDIATE_CERT"
+    "<internmediate cert>",
+    "<delegate pre-cert>"
   ]
-}
-```
-
-Then you can submit certificate using the following command:
-
-```bash
-curl -X POST http://localhost:9009/ct/v2/submit-entry -H "Content-Type: application/json" --data @payload.json -v
+}'
 ```

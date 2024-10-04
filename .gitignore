@@ -23,3 +23,7 @@ go.work.sum
 
 # env file
 .env
+
+cmd/cert_tool/*.pem
+cmd/cert_tool/*.b64
+cmd/cert_tool/cert_tool
