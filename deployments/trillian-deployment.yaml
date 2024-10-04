@@ -1,0 +1,96 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trillian-log-server
+spec:
+  selector:
+    matchLabels:
+      app: trillian-log-server
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: trillian-log-server
+    spec:
+      containers:
+        - name: trillian-log-server
+          image: conceptmasters/trillian-log-server:latest
+          args: [
+            "--storage_system=mysql",
+            "--mysql_uri=trillian:trillian@tcp(mysql:3306)/trillian",
+            "--rpc_endpoint=0.0.0.0:8090",
+            "--http_endpoint=0.0.0.0:8091",
+            "--alsologtostderr"
+          ]
+          ports:
+            - containerPort: 8090
+          env:
+            - name: DB_HOST
+              value: mysql
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_USER
+              value: trillian
+            - name: DB_PASSWORD
+              value: trillian
+            - name: DB_NAME
+              value: trillian
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trillian-log-server
+spec:
+  ports:
+    - port: 8090
+  selector:
+    app: trillian-log-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trillian-log-signer
+spec:
+  selector:
+    matchLabels:
+      app: trillian-log-signer
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: trillian-log-signer
+    spec:
+      containers:
+        - name: trillian-log-signer
+          image: conceptmasters/trillian-log-signer:latest
+          args: [
+            "--storage_system=mysql",
+            "--mysql_uri=trillian:trillian@tcp(mysql:3306)/trillian",
+            "--rpc_endpoint=0.0.0.0:8090",
+            "--http_endpoint=0.0.0.0:8091",
+            "--force_master",
+            "--alsologtostderr",
+          ]
+          ports:
+            - containerPort: 8091
+          env:
+            - name: DB_HOST
+              value: mysql
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_USER
+              value: trillian
+            - name: DB_PASSWORD
+              value: trillian
+            - name: DB_NAME
+              value: trillian
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trillian-log-signer
+spec:
+  ports:
+    - port: 8091
+  selector:
+    app: trillian-log-signer

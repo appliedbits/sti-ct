@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sti-ct
+  namespace: stict
+spec:
+  selector:
+    matchLabels:
+      app: sti-ct
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: sti-ct
+    spec:
+      containers:
+        - name: sti-ct
+          image: conceptmasters/sti-ct:latest
+          ports:
+            - containerPort: 9009
+          env:
+            - name: TRILLIAN_LOG_SERVER
+              value: trillian-log-server:8090
+            - name: TRILLIAN_LOG_ID
+              value: "1"
+            - name: SERVER_PORT
+              value: "9009"
+            - name: KEYS_PATH
+              value: "/etc/keys/signer-keys.pem"
+            - name: TRUSTED_ROOTS_PATH
+              value: "/etc/roots"
+          volumeMounts:
+            - name: signer-keys
+              mountPath: /etc/keys
+              readOnly: true
+            - name: trusted-roots
+              mountPath: /etc/roots
+              readOnly: true
+      volumes:
+        - name: signer-keys
+          secret:
+            secretName: signer-keys
+        - name: trusted-roots
+          secret:
+            secretName: trusted-roots
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sti-ct
+spec:
+  ports:
+    - port: 9009
+  selector:
+    app: sti-ct
