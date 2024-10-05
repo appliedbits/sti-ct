@@ -26,4 +26,6 @@ go.work.sum
 
 cmd/cert_tool/*.pem
 cmd/cert_tool/*.b64
+cmd/cert_tool/*.der
+cmd/cert_tool/*.txt
 cmd/cert_tool/cert_tool

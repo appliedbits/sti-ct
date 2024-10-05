@@ -115,13 +115,49 @@ func verifyPreCertificateChain(li *types.LogInfo, chain []*x509.Certificate) err
 	return nil
 }
 
+// isPreIssuer indicates whether a certificate is a pre-cert issuer with the specific
+// certificate transparency extended key usage.
+func isPreIssuer(issuer *x509.Certificate) bool {
+	for _, eku := range issuer.ExtKeyUsage {
+		if eku == x509.ExtKeyUsageCertificateTransparency {
+			return true
+		}
+	}
+	return false
+}
+
 // buildPreCertLogLeaf constructs a Merkle tree leaf entry for the pre-certificate.
 func buildPreCertLogLeaf(chain []*x509.Certificate, timestamp uint64) (*trillian.LogLeaf, error) {
-    // Create the pre-certificate structure for inclusion in the log.
-    preCert := &types.PreCert{
-        IssuerKeyHash:  sha256.Sum256(chain[1].Raw),  // Hash of the issuer's public key.
-        TBSCertificate: chain[0].RawTBSCertificate,   // The raw TBS certificate.
-    }
+    if len(chain) < 2 {
+		return nil, fmt.Errorf("no issuer cert available for precert leaf building")
+	}
+	issuer := chain[1]
+	cert := chain[0]
+
+	var preIssuer *x509.Certificate
+	if isPreIssuer(issuer) {
+		// Replace the cert's issuance information with details from the pre-issuer.
+		preIssuer = issuer
+
+		// The issuer of the pre-cert is not going to be the issuer of the final
+		// cert.  Change to use the final issuer's key hash.
+		if len(chain) < 3 {
+			return nil, fmt.Errorf("no issuer cert available for pre-issuer")
+		}
+		issuer = chain[2]
+	}
+
+	// Next, post-process the DER-encoded TBSCertificate, to remove the CT poison
+	// extension and possibly update the issuer field.
+	defangedTBS, err := x509.BuildPrecertTBS(cert.RawTBSCertificate, preIssuer)
+	if err != nil {
+		return nil, fmt.Errorf("failed to remove poison extension: %v", err)
+	}
+
+	preCert := &types.PreCert{
+		IssuerKeyHash:  sha256.Sum256(issuer.RawSubjectPublicKeyInfo),
+		TBSCertificate: defangedTBS,
+	}
 
     // Construct the Merkle leaf.
     leaf := &types.MerkleTreeLeaf{
@@ -139,10 +175,8 @@ func buildPreCertLogLeaf(chain []*x509.Certificate, timestamp uint64) (*trillian
         return nil, fmt.Errorf("failed to marshal MerkleTreeLeaf: %s", err)
     }
 
-    // Construct the LogLeaf to be submitted to the backend.
     logLeaf := &trillian.LogLeaf{
         LeafValue: leafBytes,
-        // ExtraData can be populated with information required for auditing or debugging purposes.
     }
 
     return logLeaf, nil

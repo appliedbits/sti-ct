@@ -32,16 +32,16 @@ type LogInfo struct {
 }
 
 type AddChainRequest struct {
-	Chain [][]byte `json:"chain"`
+	Chain [][]byte
 }
 
 type PreCert struct {
-	IssuerKeyHash  [sha256.Size]byte	`json:"issuer_key_hash"`
-	TBSCertificate []byte				`json:"tbs_certificate"`
+	IssuerKeyHash  [sha256.Size]byte
+	TBSCertificate []byte				`tls:"minlen:1,maxlen:16777215"`
 }
 
 type ASN1Cert struct {
-	Data []byte `json:"data"`
+	Data []byte `tls:"minlen:1,maxlen:16777215"`
 }
 
 type JSONDataEntry struct {
@@ -70,18 +70,18 @@ func (m MerkleLeafType) String() string {
 }
 
 type TimestampedEntry struct {
-	Timestamp    uint64				`json:"timestamp"`
-	EntryType    LogEntryType		`json:"entry_type"`
-	X509Entry    *ASN1Cert			`json:"x509_entry"`
-	PrecertEntry *PreCert			`json:"precert_entry"`
-	JSONEntry    *JSONDataEntry		`json:"json_entry"`
-	Extensions   CTExtensions		`json:"extensions"`
+	Timestamp    uint64
+	EntryType    LogEntryType		`tls:"maxval:65535"`
+	X509Entry    *ASN1Cert			`tls:"selector:EntryType,val:0"`
+	PrecertEntry *PreCert			`tls:"selector:EntryType,val:1"`
+	JSONEntry    *JSONDataEntry		`tls:"selector:EntryType,val:32768"`
+	Extensions   CTExtensions		`tls:"minlen:0,maxlen:65535"`
 }
 
 type MerkleTreeLeaf struct {
-	Version          Version			`json:"version"`
-	LeafType         MerkleLeafType 	`json:"leaf_type"`
-	TimestampedEntry *TimestampedEntry	`json:"timestamped_entry"`
+	Version          Version			`tls:"maxval:255"`
+	LeafType         MerkleLeafType 	`tls:"maxval:255"`
+	TimestampedEntry *TimestampedEntry	`tls:"selector:LeafType,val:0"`
 }
 
 func (m *MerkleTreeLeaf) X509Certificate() (*x509.Certificate, error) {
