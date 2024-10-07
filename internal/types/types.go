@@ -45,7 +45,7 @@ type ASN1Cert struct {
 }
 
 type JSONDataEntry struct {
-	Data []byte `json:"data"`
+	Data []byte `tls:"minlen:0,maxlen:1677215"`
 }
 
 type CTExtensions []byte

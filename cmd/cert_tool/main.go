@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/asn1"
 	"encoding/base64"
 	"encoding/pem"
 	"flag"
@@ -16,11 +17,15 @@ import (
 	"time"
 )
 
-var poisonExtension = pkix.Extension{
-	Id:    []int{1, 3, 6, 1, 4, 1, 11129, 2, 4, 3},
-	Critical: true,
-	Value:    []byte{0x05, 0x00},
-}
+// var poisonExtension = pkix.Extension{
+// 	Id:    []int{1, 3, 6, 1, 4, 1, 11129, 2, 4, 3},
+// 	Critical: true,
+// 	Value:    []byte{0x05, 0x00},
+// }
+
+var (
+	poisonOID = asn1.ObjectIdentifier{1, 3, 6, 1, 4, 1, 11129, 2, 4, 3}
+)
 
 func main() {
 	certType := flag.String("type", "root", "Type of certificate to create: root, intermediate, delegate")
@@ -130,6 +135,11 @@ func createPreCertificate(commonName string, prefix string, b64 string, parentCe
 		os.Exit(1)
 	}
 
+	poisonExtension := pkix.Extension{
+		Id:    poisonOID,
+		Value: []byte{5, 0}, // ASN.1 encoding for a NULL value
+	}
+
 	tmpl := &x509.Certificate{
 		SerialNumber: big.NewInt(time.Now().UnixNano()),
 		Subject: pkix.Name{
@@ -140,7 +150,7 @@ func createPreCertificate(commonName string, prefix string, b64 string, parentCe
 		NotAfter:              time.Now().AddDate(10, 0, 0),
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
-		Extensions:            []pkix.Extension{poisonExtension},
+		ExtraExtensions:       []pkix.Extension{poisonExtension},
 	}
 
 	if parentCert == nil || parentKey == nil {

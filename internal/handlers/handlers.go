@@ -54,6 +54,7 @@ func AddPreCertificateChain(logInfo *types.LogInfo) gin.HandlerFunc {
 
 		// Create the LogLeaf structure to submit.
 		timeMillis := uint64(time.Now().UnixNano() / 1e6)
+		fmt.Printf("TEST timeMillis: %d\n", timeMillis)
 		leaf, err := buildPreCertLogLeaf(chain, timeMillis)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to build MerkleTreeLeaf: %s", err)})
@@ -109,7 +110,13 @@ func verifyPreCertificateChain(li *types.LogInfo, chain []*x509.Certificate) err
 	opts := x509.VerifyOptions{
 		Roots: li.TrustedRoots.CertPool(),
 	}
-	if _, err := chain[0].Verify(opts); err != nil {
+	var intermediates []*x509.Certificate
+	for i, cert := range chain {
+		if i > 0 {
+			intermediates = append(intermediates, cert)
+		}
+	}
+	if _, err := intermediates[0].Verify(opts); err != nil {
 		return fmt.Errorf("failed to verify pre-certificate chain: %s", err)
 	}
 	return nil
@@ -160,7 +167,7 @@ func buildPreCertLogLeaf(chain []*x509.Certificate, timestamp uint64) (*trillian
 	}
 
     // Construct the Merkle leaf.
-    leaf := &types.MerkleTreeLeaf{
+    leaf := types.MerkleTreeLeaf{
         Version: types.V1,
         LeafType: types.TimestampedEntryLeafType,
         TimestampedEntry: &types.TimestampedEntry{

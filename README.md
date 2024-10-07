@@ -160,8 +160,8 @@ curl  -X POST \
   --header 'Content-Type: application/json' \
   --data-raw '{
   "chain": [
-    "<internmediate cert>",
-    "<delegate pre-cert>"
+    "<delegate cert>",
+    "<internmediate cert>"
   ]
 }'
 ```
