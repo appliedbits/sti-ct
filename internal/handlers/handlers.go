@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -54,10 +53,9 @@ func AddPreCertificateChain(logInfo *types.LogInfo) gin.HandlerFunc {
 
 		// Create the LogLeaf structure to submit.
 		timeMillis := uint64(time.Now().UnixNano() / 1e6)
-		fmt.Printf("TEST timeMillis: %d\n", timeMillis)
 		leaf, err := buildPreCertLogLeaf(chain, timeMillis)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to build MerkleTreeLeaf: %s", err)})
+			c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("Failed to build MerkleTreeLeaf: %s", err)})
 			return
 		}
 
@@ -88,7 +86,21 @@ func AddPreCertificateChain(logInfo *types.LogInfo) gin.HandlerFunc {
 			return
 		}
 
-		c.JSON(http.StatusOK, sct)
+		logID, err := tr.GetCTLogID(logInfo.Signer.Public())
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Errorf("failed to get logID for signing: %v", err)})
+			return
+		}
+
+		resp := models.AddChainResponse{
+			SCTVersion: sct.SCTVersion,
+			LogID: 	logID[:],
+			Timestamp: sct.Timestamp,
+			Extensions: base64.StdEncoding.EncodeToString(sct.Extensions),
+			Signature: sct.Signature.Signature,
+		}
+
+		c.JSON(http.StatusOK, resp)
 	}
 }
 
@@ -243,21 +255,6 @@ func buildPreCertificateSCT(signer crypto.Signer, leaf *types.MerkleTreeLeaf) (*
 		Extensions: sctInput.Extensions,
 		Signature:  digitallySigned,
 	}, nil
-}
-
-// writeSCTResponse marshals the SCT to JSON and writes it to the HTTP response.
-func writeSCTResponse(w http.ResponseWriter, sct *types.SignedCertificateTimestamp) (int, error) {
-    w.Header().Set("Content-Type", "application/json")
-    jsonSCT, err := json.Marshal(sct)
-    if err != nil {
-        return http.StatusInternalServerError, fmt.Errorf("failed to marshal SCT: %s", err)
-    }
-
-    if _, err = w.Write(jsonSCT); err != nil {
-        return http.StatusInternalServerError, fmt.Errorf("failed to write SCT response: %s", err)
-    }
-
-    return http.StatusOK, nil
 }
 
 // GetSignedTreeHead handles the "get-sth" requests.

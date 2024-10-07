@@ -177,24 +177,24 @@ func (d *DigitallySigned) UnmarshalJSON(b []byte) error {
 }
 
 type SignedCertificateTimestamp struct {
-	SCTVersion Version
+	SCTVersion Version				`tls:"maxval:255"`
 	LogID      LogID
 	Timestamp  uint64
-	Extensions CTExtensions
+	Extensions CTExtensions			`tls:"minlen:0,maxlen:65535"`
 	Signature  DigitallySigned
 }
 
 type SignatureType uint64
 
 type CertificateTimestamp struct {
-	SCTVersion    Version
-	SignatureType SignatureType
+	SCTVersion    Version				`tls:"maxval:255"`
+	SignatureType SignatureType			`tls:"maxval:255"`
 	Timestamp     uint64
-	EntryType     LogEntryType
-	X509Entry     *ASN1Cert
-	PrecertEntry  *PreCert
-	JSONEntry     *JSONDataEntry
-	Extensions    CTExtensions
+	EntryType     LogEntryType			`tls:"maxval:65535"`
+	X509Entry     *ASN1Cert				`tls:"selector:EntryType,val:0"`
+	PrecertEntry  *PreCert				`tls:"selector:EntryType,val:1"`
+	JSONEntry     *JSONDataEntry		`tls:"selector:EntryType,val:32768"`
+	Extensions    CTExtensions			`tls:"minlen:0,maxlen:65535"`
 }
 
 func (s SignedCertificateTimestamp) String() string {

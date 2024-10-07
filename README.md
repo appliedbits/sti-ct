@@ -165,3 +165,15 @@ curl  -X POST \
   ]
 }'
 ```
+
+You should receive response similar to this:
+
+```json
+{
+  "sct_version": 0,
+  "logid": "vgW5313syBRgMPNAke96qmTxkKeZR2KUC7yZTDFS34A=",
+  "timestamp": 1728329176139,
+  "extensions": "",
+  "signature": "LLu57l8/dNLxtM7DUBZiWAtZYbkskGuGBFiupaBANALlmH9UgNaMJYuXW2/ErpvYT/TiR4UXxi9y5uEymIXLGGN80PV7VNbVaYGwsF0+gvv2KWtupBvN+ocnfBZtD8Zr90fAI6/SMroEuBXqgyHVIYxmOzhQEdLRvP3KCVMuR9F3nP0bfg/K38pf+1Ml+zinP5U7Xca9+n6HeNf9EoadOiGTX6CzBr0Iyd7vE/I8XYdBySq3Ur+yUm2BJtGh1/cQ9njARzGwxXu4WnXxPEprfNe9Fo/A0YccLwr6Ok3Zm6AQg+DeAvMhTRKT/+sTqGt2tXcOa9bcAM++FB9XXgiNmw=="
+}
+```
